@@ -4,9 +4,32 @@ import socket
 import string
 import sys
 import shutil
+import time
 
-PKI_DICT = {}
+HISTORY = {}
 
+def make_request(code, src_path, dst_path, str1, getfile, key, s):
+    s.send(code.encode('utf-8'))
+    data = s.recv(1024).decode('utf-8')
+    if data != "KEY":
+        return 1
+    s.send(key.encode('UTF-8'))
+
+    new_path = (src_path.split(key)[1])[1:]
+    data = (s.recv(1024)).decode('UTF-8')
+    if data != str1:
+        return 1
+    s.send(new_path.encode('UTF-8'))
+
+    if dst_path != "":
+        new_path = (dst_path.split(key)[1])[1:]
+        data = (s.recv(1024)).decode('UTF-8')
+        if data != str1:
+            return 1
+        s.send(new_path.encode('UTF-8'))
+
+    if getfile == 1:
+        send_file(src_path, s)
 
 def generate_key():
     result = ""
@@ -118,7 +141,7 @@ def existing_account(client_socket):
     upload_dir(file_list, folder_list, client_socket, key)
 
 
-def get_request(client_socket, str, str1, getfile):
+def get_request(code, client_socket, str, str1, getfile):
     client_socket.send("KEY".encode('UTF-8'))
     key = client_socket.recv(1024).decode('UTF-8')
     client_socket.send(str.encode('UTF-8'))
@@ -131,13 +154,55 @@ def get_request(client_socket, str, str1, getfile):
     if getfile == 1:
         os.remove(src_full)
         download_file(client_socket, src, key)
+
+    # Add the request to the history
+    #data = HISTORY[key]
+    #op = code + "&" + src + "&" + dst
+    #temp = [time.time(), op]
+    #data.append(temp)
+
     return src_full, dst
+
+
+def uptade_client(client_socket):
+    client_socket.send("KEY".encode('UTF-8'))
+    key = client_socket.recv(1024).decode('UTF-8')
+    client_socket.send("LTU".encode('UTF-8'))
+    last_update = float(client_socket.recv(1024).decode('UTF-8'))
+
+    data = HISTORY[key]
+    size = len(data)
+    for event in data:
+        if last_update < float(event[0]):
+            comm = event[1].split('?')
+            opp = comm[0]
+            src = comm[1]
+            if opp == "222":
+                make_request("222", src, "", "SFT", 0, key, client_socket)
+            elif opp == "333":
+                make_request("333", src, "", "NAM", 0, key, client_socket)
+            elif opp == "444":
+                make_request("444", src, "", "NAD", 0, key, client_socket)
+            elif opp == "555":
+                make_request("555", src, "", "NAD", 0, key, client_socket)
+            elif opp == "666":
+                dst = comm[2]
+                make_request("666", src, dst, "NAD", 0, key, client_socket)
+            elif opp == "777":
+                make_request("777", src, "", "NAD", 1, key, client_socket)
+            temp = client_socket.recv(1024).decode('UTF-8')
+            if temp != "NXT":
+                return 1
+    client_socket.send("NOU".encode('UTF-8'))
 
 
 if __name__ == '__main__':
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('', int(sys.argv[1])))
     server.listen(5)
+
+    HISTORY['123a'] = [["1637087665.3173802", "222?123a/555555555555555/"]]
+
     while True:
         client_socket, client_address = server.accept()
         print('Connection from: ', client_address)
@@ -148,23 +213,27 @@ if __name__ == '__main__':
         elif data == "111":
             existing_account(client_socket)
         elif data == "222":
-            src, dst = get_request(client_socket, "SFT", "", 0)
+            src, dst = get_request(data, client_socket, "SFT", "", 0)
             os.mkdir(src)
         elif data == "333":
-            src, dst = get_request(client_socket, "NAM", "", 0)
+            src, dst = get_request(data, client_socket, "NAM", "", 0)
             file = open(src, 'wb')
             file.close()
         elif data == "444":
-            src, dst = get_request(client_socket, "NAD", "", 0)
+            src, dst = get_request(data, client_socket, "NAD", "", 0)
             if os.path.exists(src):
                 shutil.rmtree(src)
         elif data == "555":
-            src, dst = get_request(client_socket, "NAD", "", 0)
+            src, dst = get_request(data, client_socket, "NAD", "", 0)
             os.remove(src)
         elif data == "666":
-            src, dst = get_request(client_socket, "NAD", "NAD", 0)
+            src, dst = get_request(data, client_socket, "NAD", "NAD", 0)
             os.rename(src, dst)
         elif data == "777":
-            src, dst = get_request(client_socket, "NAD", "", 1)
+            src, dst = get_request(data, client_socket, "NAD", "", 1)
+        elif data == "777":
+            src, dst = get_request(data, client_socket, "NAD", "", 1)
+        elif data == "888":
+            uptade_client(client_socket)
 
         client_socket.close()
