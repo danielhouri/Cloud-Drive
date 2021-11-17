@@ -4,7 +4,6 @@ import socket
 import string
 import sys
 import shutil
-import time
 
 HISTORY = {}
 
@@ -20,14 +19,14 @@ def make_request(code, src_path, dst_path, str1, getfile, key, s):
     data = (s.recv(1024)).decode('UTF-8')
     if data != str1:
         return 1
-    s.send(new_path.encode('UTF-8'))
+    s.send(str(new_path).encode('UTF-8'))
 
     if dst_path != "":
         new_path = (dst_path.split(key)[1])[1:]
         data = (s.recv(1024)).decode('UTF-8')
         if data != str1:
             return 1
-        s.send(new_path.encode('UTF-8'))
+        s.send(str(new_path).encode('UTF-8'))
 
     if getfile == 1:
         send_file(src_path, s)
@@ -78,6 +77,7 @@ def new_account(client_socket):
     # Generate and sent a key to the new client
     key = generate_key()
     client_socket.send(key.encode('UTF-8'))
+    HISTORY['123a'] = []
 
     # Open a folder for the new client - the folder name is the key
     os.mkdir(key)
@@ -164,6 +164,7 @@ def get_request(code, client_socket, str, str1, getfile):
     op = code + "?" + src_full + "?" + dst
     temp = [float(ntu), op]
     data.append(temp)
+    print(temp)
 
     return src_full, dst
 
@@ -201,11 +202,14 @@ def uptade_client(client_socket):
 
 
 if __name__ == '__main__':
+    globals()
+    HISTORY['123a'] = []
+
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('', int(sys.argv[1])))
     server.listen(5)
 
-    HISTORY['123a'] = [["1637087665.3173802", "222?123a/555555555555555/"]]
+    # HISTORY['123a'] = [["1637087665.3173802", "222?123a/555555555555555/"]]
 
     while True:
         client_socket, client_address = server.accept()
@@ -233,8 +237,6 @@ if __name__ == '__main__':
         elif data == "666":
             src, dst = get_request(data, client_socket, "NAD", "NAD", 0)
             os.rename(src, dst)
-        elif data == "777":
-            src, dst = get_request(data, client_socket, "NAD", "", 1)
         elif data == "777":
             src, dst = get_request(data, client_socket, "NAD", "", 1)
         elif data == "888":
