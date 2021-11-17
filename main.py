@@ -8,6 +8,7 @@ import time
 
 HISTORY = {}
 
+
 def make_request(code, src_path, dst_path, str1, getfile, key, s):
     s.send(code.encode('utf-8'))
     data = s.recv(1024).decode('utf-8')
@@ -30,6 +31,7 @@ def make_request(code, src_path, dst_path, str1, getfile, key, s):
 
     if getfile == 1:
         send_file(src_path, s)
+
 
 def generate_key():
     result = ""
@@ -142,9 +144,10 @@ def existing_account(client_socket):
 
 
 def get_request(code, client_socket, str, str1, getfile):
-    ntu = time.time()
     client_socket.send("KEY".encode('UTF-8'))
     key = client_socket.recv(1024).decode('UTF-8')
+    client_socket.send("TIM".encode('UTF-8'))
+    ntu = client_socket.recv(1024).decode('UTF-8')
     client_socket.send(str.encode('UTF-8'))
     src = client_socket.recv(1024).decode('UTF-8')
     src_full = key + '/' + src
@@ -159,7 +162,7 @@ def get_request(code, client_socket, str, str1, getfile):
     # Add the request to the history
     data = HISTORY[key]
     op = code + "?" + src_full + "?" + dst
-    temp = [ntu, op]
+    temp = [float(ntu), op]
     data.append(temp)
 
     return src_full, dst
