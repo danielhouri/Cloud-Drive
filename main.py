@@ -64,7 +64,6 @@ def download_dir(client_socket, path, client_file):
     # Download the file names and create the files
     data_list = get_list(client_socket, client_file)
     for filename in data_list:
-        client_socket.send("FTS".encode('UTF-8'))
         download_file(client_socket, filename, path, client_file)
 
 
