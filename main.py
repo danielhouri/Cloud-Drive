@@ -31,7 +31,6 @@ def generate_key():
 
 
 def get_list(client_file):
-    #size = int(client_file.readline())
     data_list = client_file.readline().strip().decode()
     data_list = data_list.split(',')
     return data_list
