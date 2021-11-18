@@ -69,7 +69,8 @@ def new_account(sock, cli_file):
     # Generate and sent a key to the new client
     key = generate_key()
     sock.sendall(key.encode() + b'\n')
-    HISTORY['123a'] = []
+    HISTORY[key] = []
+    print(key)
 
     # Open a folder for the new client - the folder name is the key
     os.mkdir(key)
@@ -184,29 +185,38 @@ if __name__ == '__main__':
             data = data.strip().decode()
 
             if data == "000":
+                # New account - create a new folder on the server and download the content
                 new_account(client_socket, client_file)
             elif data == "111":
+                # Existing account - create a new folder on the client and download the content
                 existing_account(client_socket)
             elif data == "222":
+                # 222 - create a new folder
                 src, dst = get_request(data, client_file, "", 0)
                 os.mkdir(src)
             elif data == "333":
+                # 333 - Create a new file
                 src, dst = get_request(data, client_file, "", 0)
                 file = open(src, 'wb')
                 file.close()
             elif data == "444":
+                # 444 - Remove a folder
                 src, dst = get_request(data, client_file, "", 0)
                 if os.path.exists(src):
                     shutil.rmtree(src)
             elif data == "555":
+                # 555 - Remove a file
                 src, dst = get_request(data, client_file, "", 0)
                 os.remove(src)
             elif data == "666":
+                # 666 - Rename a file / folder
                 src, dst = get_request(data, client_file, "NAD", 0)
                 os.rename(src, dst)
             elif data == "777":
+                # 777 - Get changes in a file
                 src, dst = get_request(data, client_file, "", 1)
             elif data == "888":
+                # 888 - Get updates
                 update_client(client_socket, client_file)
 
         client_socket.close()
