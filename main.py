@@ -8,6 +8,7 @@ import shutil
 HISTORY = {}
 
 
+# Create a new request and send it to the server
 def make_request(code, src_path, dst_path, getfile, key, sock):
     sock.sendall(code.encode() + b'\n')
 
@@ -22,6 +23,7 @@ def make_request(code, src_path, dst_path, getfile, key, sock):
         send_file(src_path, sock)
 
 
+# Generate a key of 128B contain just numbers, lowercase and uppercase
 def generate_key():
     result = ""
     pattern = string.digits + string.ascii_lowercase + string.ascii_uppercase
@@ -30,12 +32,14 @@ def generate_key():
     return result
 
 
+# The function get a list of file/folder names
 def get_list(cli_file):
     data_list = cli_file.readline().strip().decode()
     data_list = data_list.split(',')
     return data_list
 
 
+# The function download a file from the server
 def download_file(filename, path, cli_file):
     size = int(cli_file.readline())
     to_write = cli_file.read(size)
@@ -43,8 +47,8 @@ def download_file(filename, path, cli_file):
         f.write(to_write)
 
 
+# Send directory names
 def send_file(filename, sock):
-    # Send directory names
     size = os.path.getsize(filename)
     sock.sendall(str(size).encode() + b'\n')
 
@@ -52,8 +56,8 @@ def send_file(filename, sock):
         sock.sendall(f.read())
 
 
+# Download the folder names and create the folders
 def download_dir(path, cli_file):
-    # Download the folder names and create the folders
     data_list = get_list(cli_file)
     for directory in data_list:
         new_path = path + '/' + directory
@@ -65,6 +69,7 @@ def download_dir(path, cli_file):
         download_file(filename, path, cli_file)
 
 
+# Create a new account - Download the entire dir from the client
 def new_account(sock, cli_file):
     # Generate and sent a key to the new client
     key = generate_key()
@@ -77,17 +82,17 @@ def new_account(sock, cli_file):
     download_dir(key, cli_file)
 
 
+# Send directory names
 def send_list(data_list, sock, path):
-    # Send directory names
     res = []
     for name in data_list:
         temp = (name.split(path)[1])[1:]
         res.append(temp)
     res = ','.join(res)
-
     sock.sendall(res.encode() + b'\n')
 
 
+# The function upload a new dir to the server
 def upload_dir(file_list, folder_list, sock, key):
     send_list(folder_list, sock, key)
     send_list(file_list, sock, key)
@@ -96,6 +101,7 @@ def upload_dir(file_list, folder_list, sock, key):
         send_file(filename, sock)
 
 
+# The function create a list of folder / file names
 def get_file_directory(path):
     all_files = []
     all_directories = []
@@ -111,6 +117,7 @@ def get_file_directory(path):
     return all_files, all_directories[1:]
 
 
+# The function upload the entire folder and file
 def existing_account(sock):
     key = client_file.readline().strip().decode()
     file_list, folder_list = get_file_directory(key)
@@ -118,8 +125,9 @@ def existing_account(sock):
 
 
 def get_request(code, cli_file, str1, getfile):
+    # Get the key, last time of updates and the src name
     key = client_file.readline().strip().decode()
-    ntu = float(client_file.readline())
+    ltu = float(client_file.readline())
     src_name = client_file.readline().strip().decode()
     src_full = key + '/' + src_name
 
@@ -133,7 +141,7 @@ def get_request(code, cli_file, str1, getfile):
     # Add the request to the history
     user_history = HISTORY[key]
     op = code + "?" + src_full + "?" + dst_full
-    temp = [float(ntu), op]
+    temp = [float(ltu), op]
     user_history.append(temp)
     print(temp)
 
