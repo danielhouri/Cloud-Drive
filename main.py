@@ -30,7 +30,7 @@ def generate_key():
     return result
 
 
-def get_list(sock, client_file):
+def get_list(client_file):
     #size = int(client_file.readline())
     data_list = client_file.readline().strip().decode()
     data_list = data_list.split(',')
@@ -40,7 +40,7 @@ def get_list(sock, client_file):
 def download_file(client_socket, filename, path, client_file):
     size = int(client_file.readline())
     data = client_file.read(size)
-    with open(os.path.join(path,filename), 'wb') as f:
+    with open(os.path.join(path, filename), 'wb') as f:
         f.write(data)
 
 
@@ -55,13 +55,13 @@ def send_file(filename, sock):
 
 def download_dir(client_socket, path, client_file):
     # Download the folder names and create the folders
-    data_list = get_list(client_socket, client_file)
+    data_list = get_list(client_file)
     for directory in data_list:
         new_path = path + '/' + directory
         os.mkdir(new_path)
 
     # Download the file names and create the files
-    data_list = get_list(client_socket, client_file)
+    data_list = get_list(client_file)
     for filename in data_list:
         download_file(client_socket, filename, path, client_file)
 
@@ -85,8 +85,7 @@ def send_list(data_list, sock, path, cli_file):
         data.append(temp)
     data = ','.join(data)
 
-    sock.sendall(str(len(data)) + b'\n')
-    sock.sendall(data + b'\n')
+    sock.sendall(data.encode() + b'\n')
 
 
 def upload_dir(file_list, folder_list, sock, cli_file, key):
@@ -115,7 +114,7 @@ def get_file_directory(path):
 def existing_account(sock, cli_file):
     key = client_file.readline().strip().decode()
     file_list, folder_list = get_file_directory(key)
-    upload_dir(file_list, folder_list, sock, key, cli_file)
+    upload_dir(file_list, folder_list, sock, cli_file, key)
 
 
 def get_request(code, sock, cli_file, str1, getfile):
