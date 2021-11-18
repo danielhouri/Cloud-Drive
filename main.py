@@ -8,28 +8,18 @@ import shutil
 HISTORY = {}
 
 
-def make_request(code, src_path, dst_path, str1, getfile, key, s):
-    s.send(code.encode('utf-8'))
-    data = s.recv(1024).decode('utf-8')
-    if data != "KEY":
-        return 1
-    s.send(key.encode('UTF-8'))
+def make_request(code, src_path, dst_path, str1, getfile, key, sock):
+    sock.sendall(code.encode() + b'\n')
 
     new_path = (src_path.split(key)[1])[1:]
-    data = (s.recv(1024)).decode('UTF-8')
-    if data != str1:
-        return 1
-    s.send(str(new_path).encode('UTF-8'))
+    sock.sendall(str(new_path).encode() + b'\n')
 
     if dst_path != "":
         new_path = (dst_path.split(key)[1])[1:]
-        data = (s.recv(1024)).decode('UTF-8')
-        if data != str1:
-            return 1
-        s.send(str(new_path).encode('UTF-8'))
+        sock.sendall(str(new_path).encode() + b'\n')
 
     if getfile == 1:
-        send_file(src_path, s)
+        send_file(src_path, sock)
 
 
 def generate_key():
@@ -40,51 +30,56 @@ def generate_key():
     return result
 
 
-def get_list(client_socket):
-    size = client_socket.recv(15).decode('UTF-8')
-    client_socket.send("EOT".encode('UTF-8'))
-    data = client_socket.recv(int(size)).decode('UTF-8')
-    data = data.split(',')
-    return data
+def get_list(sock, client_file):
+    size = int(client_file.readline())
+    data_list = client_file.read(size)
+    data_list = data_list.split(',')
+    return data_list
 
 
-def download_file(client_socket, filename, path):
-    file = open(path + '/' + filename, 'wb+')
-    while True:
-        data = client_socket.recv(1024)
-        if len(data) >= 3 and data[-3:] == b'FTF':
-            file.write(data[:-3])
-            break
-        file.write(data)
+def download_file(client_socket, filename, path, client_file):
+    size = int(client_file.readline())
+    data = client_file.read(size)
+    with open(os.path.join(path,filename), 'wb') as f:
+        f.write(data)
     file.close()
 
 
-def download_dir(client_socket, path):
+def send_file(filename, sock):
+    # Send directory names
+    size = os.path.getsize(filename)
+    sock.sendall(str(size).encode() + b'\n')
+
+    with open(filename, 'rb') as f:
+        sock.sendall(f.read())
+
+
+def download_dir(client_socket, path, client_file):
     # Download the folder names and create the folders
-    data = get_list(client_socket)
-    for directory in data:
+    data_list = get_list(client_socket, client_file)
+    for directory in data_list:
         new_path = path + '/' + directory
         os.mkdir(new_path)
 
     # Download the file names and create the files
-    data = get_list(client_socket)
-    for filename in data:
+    data_list = get_list(client_socket, client_file)
+    for filename in data_list:
         client_socket.send("FTS".encode('UTF-8'))
-        download_file(client_socket, filename, path)
+        download_file(client_socket, filename, path, client_file)
 
 
-def new_account(client_socket):
+def new_account(client_socket, client_file):
     # Generate and sent a key to the new client
     key = generate_key()
-    client_socket.send(key.encode('UTF-8'))
+    client_socket.sendall(key.encode() + b'\n')
     HISTORY['123a'] = []
 
     # Open a folder for the new client - the folder name is the key
     os.mkdir(key)
-    download_dir(client_socket, key)
+    download_dir(client_socket, key, client_file)
 
 
-def send_list(data_list, client_socket, path):
+def send_list(data_list, sock, path, cli_file):
     # Send directory names
     data = []
     for name in data_list:
@@ -92,33 +87,16 @@ def send_list(data_list, client_socket, path):
         data.append(temp)
     data = ','.join(data)
 
-    client_socket.send(str(len(data)).encode('UTF-8'))
-    temp = client_socket.recv(15).decode('UTf-8')
-    if temp != "EOT":
-        return 1
-    client_socket.send(data.encode('UTF-8'))
+    sock.sendall(str(len(data)) + b'\n')
+    sock.sendall(data + b'\n')
 
 
-def send_file(filename, client_socket):
-    # Send directory names
-    file = open(filename, 'rb')
-    data = file.read(1024)
-    while data:
-        client_socket.send(data)
-        data = file.read(1024)
-
-    client_socket.send("FTF".encode('UTF-8'))
-    file.close()
-
-
-def upload_dir(file_list, folder_list, client_socket, key):
-    send_list(folder_list, client_socket, key)
-    send_list(file_list, client_socket, key)
+def upload_dir(file_list, folder_list, sock, cli_file, key):
+    send_list(folder_list, sock, key, cli_file)
+    send_list(file_list, sock, key, cli_file)
 
     for filename in file_list:
-        temp = client_socket.recv(15).decode('UTf-8')
-        if temp == "FTS":
-            send_file(filename, client_socket)
+        send_file(filename, sock)
 
 
 def get_file_directory(path):
@@ -136,69 +114,61 @@ def get_file_directory(path):
     return all_files, all_directories[1:]
 
 
-def existing_account(client_socket):
-    client_socket.send("KEY".encode('UTF-8'))
-    key = client_socket.recv(1024).decode('UTF-8')
+def existing_account(sock, cli_file):
+    key = client_file.readline().strip().decode()
     file_list, folder_list = get_file_directory(key)
-    upload_dir(file_list, folder_list, client_socket, key)
+    upload_dir(file_list, folder_list, sock, key, cli_file)
 
 
-def get_request(code, client_socket, str, str1, getfile):
-    client_socket.send("KEY".encode('UTF-8'))
-    key = client_socket.recv(1024).decode('UTF-8')
-    client_socket.send("TIM".encode('UTF-8'))
-    ntu = client_socket.recv(1024).decode('UTF-8')
-    client_socket.send(str.encode('UTF-8'))
-    src = client_socket.recv(1024).decode('UTF-8')
-    src_full = key + '/' + src
-    dst = ""
+def get_request(code, sock, cli_file, str1, getfile):
+    key = client_file.readline().strip().decode()
+    ntu = float(client_file.readline())
+    src_name = client_file.readline().strip().decode()
+    src_full = key + '/' + src_name
+
+    dst_full = ""
     if str1 != "":
-        client_socket.send(str1.encode('UTF-8'))
-        dst = key + '/' + client_socket.recv(1024).decode('UTF-8')
+        dst_full = key + '/' + client_file.readline().strip().decode()
     if getfile == 1:
         os.remove(src_full)
-        download_file(client_socket, src, key)
+        download_file(client_socket, src_name, key, cli_file)
 
     # Add the request to the history
     data = HISTORY[key]
-    op = code + "?" + src_full + "?" + dst
+    op = code + "?" + src_full + "?" + dst_full
     temp = [float(ntu), op]
     data.append(temp)
     print(temp)
 
-    return src_full, dst
+    return src_full, dst_full
 
 
-def uptade_client(client_socket):
-    client_socket.send("KEY".encode('UTF-8'))
-    key = client_socket.recv(1024).decode('UTF-8')
-    client_socket.send("LTU".encode('UTF-8'))
-    last_update = float(client_socket.recv(1024).decode('UTF-8'))
+def update_client(sock, cli_file):
+    key = cli_file.readline()
+    key = key.decode()
 
-    data = HISTORY[key]
-    size = len(data)
-    for event in data:
+    last_update = float(cli_file.readline())
+    user_history = HISTORY[key]
+
+    for event in user_history:
         if last_update < float(event[0]):
             comm = event[1].split('?')
             opp = comm[0]
             src = comm[1]
             if opp == "222":
-                make_request("222", src, "", "SFT", 0, key, client_socket)
+                make_request("222", src, "", "SFT", 0, key, sock)
             elif opp == "333":
-                make_request("333", src, "", "NAM", 0, key, client_socket)
+                make_request("333", src, "", "NAM", 0, key, sock)
             elif opp == "444":
-                make_request("444", src, "", "NAD", 0, key, client_socket)
+                make_request("444", src, "", "NAD", 0, key, sock)
             elif opp == "555":
-                make_request("555", src, "", "NAD", 0, key, client_socket)
+                make_request("555", src, "", "NAD", 0, key, sock)
             elif opp == "666":
                 dst = comm[2]
-                make_request("666", src, dst, "NAD", 0, key, client_socket)
+                make_request("666", src, dst, "NAD", 0, key, sock)
             elif opp == "777":
-                make_request("777", src, "", "NAD", 1, key, client_socket)
-            temp = client_socket.recv(1024).decode('UTF-8')
-            if temp != "NXT":
-                return 1
-    client_socket.send("NOU".encode('UTF-8'))
+                make_request("777", src, "", "NAD", 1, key, sock)
+    sock.sendall("NOU".encode() + b'\n')
 
 
 if __name__ == '__main__':
@@ -209,37 +179,40 @@ if __name__ == '__main__':
     server.bind(('', int(sys.argv[1])))
     server.listen(5)
 
-    # HISTORY['123a'] = [["1637087665.3173802", "222?123a/555555555555555/"]]
-
     while True:
         client_socket, client_address = server.accept()
         print('Connection from: ', client_address)
-        data = client_socket.recv(1024).decode('UTF-8')
+        with client_socket, client_socket.makefile('rb') as client_file:
 
-        if data == "000":
-            new_account(client_socket)
-        elif data == "111":
-            existing_account(client_socket)
-        elif data == "222":
-            src, dst = get_request(data, client_socket, "SFT", "", 0)
-            os.mkdir(src)
-        elif data == "333":
-            src, dst = get_request(data, client_socket, "NAM", "", 0)
-            file = open(src, 'wb')
-            file.close()
-        elif data == "444":
-            src, dst = get_request(data, client_socket, "NAD", "", 0)
-            if os.path.exists(src):
-                shutil.rmtree(src)
-        elif data == "555":
-            src, dst = get_request(data, client_socket, "NAD", "", 0)
-            os.remove(src)
-        elif data == "666":
-            src, dst = get_request(data, client_socket, "NAD", "NAD", 0)
-            os.rename(src, dst)
-        elif data == "777":
-            src, dst = get_request(data, client_socket, "NAD", "", 1)
-        elif data == "888":
-            uptade_client(client_socket)
+            data = client_file.readline()
+            if not data:
+                break
+            data = data.strip().decode()
+
+            if data == "000":
+                new_account(client_socket, client_file)
+            elif data == "111":
+                existing_account(client_socket, client_file)
+            elif data == "222":
+                src, dst = get_request(data, client_socket, client_file, "", 0)
+                os.mkdir(src)
+            elif data == "333":
+                src, dst = get_request(data, client_socket, client_file, "", 0)
+                file = open(src, 'wb')
+                file.close()
+            elif data == "444":
+                src, dst = get_request(data, client_socket, client_file, "", 0)
+                if os.path.exists(src):
+                    shutil.rmtree(src)
+            elif data == "555":
+                src, dst = get_request(data, client_socket, client_file, "", 0)
+                os.remove(src)
+            elif data == "666":
+                src, dst = get_request(data, client_socket, client_file, "NAD", 0)
+                os.rename(src, dst)
+            elif data == "777":
+                src, dst = get_request(data, client_socket, client_file, "", 1)
+            elif data == "888":
+                update_client(client_socket, client_file)
 
         client_socket.close()
