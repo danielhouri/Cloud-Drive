@@ -31,8 +31,8 @@ def generate_key():
 
 
 def get_list(sock, client_file):
-    size = int(client_file.readline())
-    data_list = client_file.read(size)
+    #size = int(client_file.readline())
+    data_list = client_file.readline().strip().decode()
     data_list = data_list.split(',')
     return data_list
 
@@ -42,7 +42,6 @@ def download_file(client_socket, filename, path, client_file):
     data = client_file.read(size)
     with open(os.path.join(path,filename), 'wb') as f:
         f.write(data)
-    file.close()
 
 
 def send_file(filename, sock):
@@ -143,9 +142,7 @@ def get_request(code, sock, cli_file, str1, getfile):
 
 
 def update_client(sock, cli_file):
-    key = cli_file.readline()
-    key = key.decode()
-
+    key = cli_file.readline().strip().decode()
     last_update = float(cli_file.readline())
     user_history = HISTORY[key]
 
