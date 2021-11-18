@@ -141,28 +141,39 @@ def get_request(code, cli_file, str1, getfile):
 
 
 def update_client(sock, cli_file):
+    # Get the key and the last time of updates
     key = cli_file.readline().strip().decode()
     last_update = float(cli_file.readline())
     user_history = HISTORY[key]
 
     for event in user_history:
+        # Check if the current event is newer than the last update on the client
         if last_update < float(event[0]):
+            # opp = the command number
             comm = event[1].split('?')
             opp = comm[0]
             src_full = comm[1]
+
             if opp == "222":
+                # 222 - Create a new folder
                 make_request("222", src_full, "", 0, key, sock)
             elif opp == "333":
+                # 333 - Create a new file
                 make_request("333", src_full, "", 0, key, sock)
             elif opp == "444":
+                # 444 - Remove a folder
                 make_request("444", src_full, "", 0, key, sock)
             elif opp == "555":
+                # 555 - Remove a file
                 make_request("555", src_full, "", 0, key, sock)
             elif opp == "666":
+                # 666 - Rename a file / folder
                 dst_full = comm[2]
                 make_request("666", src_full, dst_full, 0, key, sock)
             elif opp == "777":
+                # 777 - Get changes in a file
                 make_request("777", src_full, "", 1, key, sock)
+    # If there is no more updates
     sock.sendall("NOU".encode() + b'\n')
 
 
