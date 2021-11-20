@@ -3,7 +3,6 @@ import random
 import socket
 import string
 import sys
-import shutil
 
 HISTORY = {}
 
@@ -185,6 +184,19 @@ def update_client(sock, cli_file):
     sock.sendall("NOU".encode() + b'\n')
 
 
+def delete_folder(delete_path):
+    file_list, folder_list = get_file_directory(delete_path)
+    # Remove all files in the directory and sub-directories
+    for file_path in file_list:
+        os.remove(file_path)
+
+    # Remove the sub-directories and the main directory
+    folder_list.reverse()
+    for folder_path in folder_list:
+        os.rmdir(folder_path)
+    os.rmdir(delete_path)
+
+
 if __name__ == '__main__':
     globals()
     HISTORY['123a'] = []
@@ -222,7 +234,7 @@ if __name__ == '__main__':
                 # 444 - Remove a folder
                 src, dst = get_request(data, client_file, "", 0)
                 if os.path.exists(src):
-                    shutil.rmtree(src)
+                    delete_folder(src)
             elif data == "555":
                 # 555 - Remove a file
                 src, dst = get_request(data, client_file, "", 0)
