@@ -142,7 +142,6 @@ def get_request(code, cli_file, str1, getfile):
     op = code + "?" + src_full + "?" + dst_full
     temp = [float(ltu), op]
     user_history.append(temp)
-    print(temp)
 
     return src_full, dst_full
 
@@ -207,7 +206,6 @@ if __name__ == '__main__':
 
     while True:
         client_socket, client_address = server.accept()
-        print('Connection from: ', client_address)
         with client_socket, client_socket.makefile('rb') as client_file:
 
             data = client_file.readline()
