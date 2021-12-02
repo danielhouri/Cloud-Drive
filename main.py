@@ -59,13 +59,15 @@ def send_file(filename, sock):
 def download_dir(path, cli_file):
     data_list = get_list(cli_file)
     for directory in data_list:
-        new_path = os.path.join(path, directory)
-        os.mkdir(new_path)
+        if directory != "":
+            new_path = os.path.join(path, directory)
+            os.mkdir(new_path)
 
     # Download the file names and create the files
     data_list = get_list(cli_file)
     for filename in data_list:
-        download_file(filename, path, cli_file)
+        if filename != "":
+            download_file(filename, path, cli_file)
 
 
 # Create a new account - Download the entire dir from the client
