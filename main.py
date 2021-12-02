@@ -59,7 +59,7 @@ def send_file(filename, sock):
 def download_dir(path, cli_file):
     data_list = get_list(cli_file)
     for directory in data_list:
-        new_path = path + '/' + directory
+        new_path = os.path.join(path, directory)
         os.mkdir(new_path)
 
     # Download the file names and create the files
@@ -128,11 +128,11 @@ def get_request(code, cli_file, str1, getfile):
     key = client_file.readline().strip().decode()
     ltu = float(client_file.readline())
     src_name = client_file.readline().strip().decode()
-    src_full = key + '/' + src_name
+    src_full = os.path.join(key, src_name)
 
     dst_full = ""
     if str1 != "":
-        dst_full = key + '/' + client_file.readline().strip().decode()
+        dst_full = os.path.join(key, client_file.readline().strip().decode())
     if getfile == 1:
         os.remove(src_full)
         download_file(src_name, key, cli_file)
