@@ -242,7 +242,8 @@ if __name__ == '__main__':
             elif data == "666":
                 # 666 - Rename a file / folder
                 src, dst = get_request(data, client_file, "NAD", 0)
-                os.rename(src, dst)
+                if os.path.exists(src):
+                    os.rename(src, dst)
             elif data == "777":
                 # 777 - Get changes in a file
                 src, dst = get_request(data, client_file, "", 1)
